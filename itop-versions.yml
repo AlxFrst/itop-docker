@@ -1,4 +1,4 @@
 versions:
-  - itop_version: "3.1.1"
+  - itop_version: "3.2.0"
     php_version: "8.1"
-    url: "https://netix.dl.sourceforge.net/project/itop/itop/3.1.1-1/iTop-3.1.1-1-12561.zip"
+    url: "https://deac-riga.dl.sourceforge.net/project/itop/itop/3.2.0/iTop-3.2.0-14524.zip"
