@@ -47,8 +47,8 @@ jobs:
           if [ -n "$itop_version" ] && [ -n "$php_version" ] && [ -n "$url" ]; then
             echo "Building Docker image..."
             docker build \
-              --build-arg PHP_VERSION=$php_version \
-              --build-arg ITOP_URL=$url \
+              --build-arg PHP_VERSION="$php_version" \
+              --build-arg ITOP_URL="$url" \
               -t ${{ secrets.DOCKERHUB_USERNAME }}/itop:${itop_version}-php${php_version} .
             echo "Pushing Docker image..."
             docker push ${{ secrets.DOCKERHUB_USERNAME }}/itop:${itop_version}-php${php_version}
