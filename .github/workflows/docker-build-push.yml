@@ -26,14 +26,20 @@ jobs:
         while IFS= read -r line; do
           if [[ $line == *"itop_version:"* ]]; then
             itop_version=$(echo $line | awk '{print $2}' | tr -d '"')
+            echo "Found iTop version: $itop_version"
           elif [[ $line == *"php_version:"* ]]; then
             php_version=$(echo $line | awk '{print $2}' | tr -d '"')
+            echo "Found PHP version: $php_version"
           elif [[ $line == *"url:"* ]]; then
             url=$(echo $line | awk '{print $2}' | tr -d '"')
+            echo "Found URL: $url"
+            echo "Building Docker image..."
             docker build \
               --build-arg PHP_VERSION=$php_version \
               --build-arg ITOP_URL=$url \
               -t ${{ secrets.DOCKERHUB_USERNAME }}/itop:${itop_version}-php${php_version} .
+            echo "Pushing Docker image..."
             docker push ${{ secrets.DOCKERHUB_USERNAME }}/itop:${itop_version}-php${php_version}
+            echo "Image pushed successfully"
           fi
         done < itop-versions.yml
