@@ -10,7 +10,8 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
@@ -21,34 +22,56 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Install yq
+      run: |
+        sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.30.8/yq_linux_amd64
+        sudo chmod +x /usr/local/bin/yq
+
+    - name: Display itop-versions.yml content
+      run: cat itop-versions.yml
+
     - name: Build and push images
       run: |
         echo "Contents of itop-versions.yml:"
         cat itop-versions.yml
         echo "Starting loop..."
-        while IFS= read -r line || [[ -n "$line" ]]; do
-          echo "Processing line: $line"
-          if [[ $line == *"itop_version:"* ]]; then
-            itop_version=$(echo $line | awk '{print $2}' | tr -d '"')
-            echo "Found iTop version: $itop_version"
-          elif [[ $line == *"php_version:"* ]]; then
-            php_version=$(echo $line | awk '{print $2}' | tr -d '"')
-            echo "Found PHP version: $php_version"
-          elif [[ $line == *"url:"* ]]; then
-            url=$(echo $line | awk '{print $2}' | tr -d '"')
-            echo "Found URL: $url"
-            if [ -n "$itop_version" ] && [ -n "$php_version" ] && [ -n "$url" ]; then
-              echo "Building Docker image..."
-              docker build \
-                --build-arg PHP_VERSION=$php_version \
-                --build-arg ITOP_URL=$url \
-                -t ${{ secrets.DOCKERHUB_USERNAME }}/itop:${itop_version}-php${php_version} .
-              echo "Pushing Docker image..."
-              docker push ${{ secrets.DOCKERHUB_USERNAME }}/itop:${itop_version}-php${php_version}
-              echo "Image pushed successfully"
-            else
-              echo "Missing information to build image"
-            fi
+        yq e '.versions[]' itop-versions.yml | while read -r version; do
+          itop_version=$(echo "$version" | yq e '.itop_version' -)
+          php_version=$(echo "$version" | yq e '.php_version' -)
+          url=$(echo "$version" | yq e '.url' -)
+          
+          echo "Found iTop version: $itop_version"
+          echo "Found PHP version: $php_version"
+          echo "Found URL: $url"
+          
+          if [ -n "$itop_version" ] && [ -n "$php_version" ] && [ -n "$url" ]; then
+            echo "Building Docker image..."
+            docker build \
+              --build-arg PHP_VERSION=$php_version \
+              --build-arg ITOP_URL=$url \
+              -t ${{ secrets.DOCKERHUB_USERNAME }}/itop:${itop_version}-php${php_version} .
+            echo "Pushing Docker image..."
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/itop:${itop_version}-php${php_version}
+            echo "Image pushed successfully"
+          else
+            echo "Missing information to build image"
           fi
-        done < itop-versions.yml
+        done
         echo "Loop finished"
+
+    - name: List Docker images
+      run: docker images
+
+    - name: Check Docker login
+      run: docker info
+
+    - name: Check environment variables
+      run: |
+        echo "DOCKERHUB_USERNAME is set: ${{ secrets.DOCKERHUB_USERNAME != '' }}"
+        echo "DOCKERHUB_TOKEN is set: ${{ secrets.DOCKERHUB_TOKEN != '' }}"
+
+    - name: Push test image
+      run: |
+        docker pull hello-world
+        docker tag hello-world ${{ secrets.DOCKERHUB_USERNAME }}/test-image:latest
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/test-image:latest
